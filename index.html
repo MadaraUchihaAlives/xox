@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>NEON XOX Game</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   body {
     margin: 0;
@@ -17,6 +18,13 @@
     font-family: 'Poppins', sans-serif;
   }
 
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
   .mode-select {
     display: flex;
     flex-direction: column;
@@ -25,7 +33,7 @@
     margin-bottom: 20px;
   }
 
-  .mode-select button {
+  .mode-select button, .btn {
     padding: 12px 25px;
     font-size: 18px;
     background: rgba(0,0,0,0.8);
@@ -38,8 +46,60 @@
     transition: 0.3s;
   }
 
-  .mode-select button:hover {
+  .mode-select button:hover, .btn:hover {
     background: rgba(0,0,0,0.9);
+  }
+
+  .input-box {
+    padding: 10px 15px;
+    font-size: 16px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border: 2px solid #00f5c9;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 15px rgba(0,245,201,0.5);
+    transition: 0.3s;
+    text-align: center;
+  }
+
+  .input-box::placeholder {
+    color: rgba(255,255,255,0.5);
+  }
+
+  .input-box:focus {
+    outline: none;
+    box-shadow: 0 0 25px #00f5c9;
+  }
+
+  .room-info {
+    background: rgba(0,0,0,0.7);
+    padding: 20px 30px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 20px #00f5c9;
+    color: white;
+    text-align: center;
+    display: none;
+  }
+
+  .room-id {
+    font-size: 2rem;
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff;
+    margin: 10px 0;
+    letter-spacing: 5px;
+  }
+
+  .waiting-text {
+    color: #00f5c9;
+    font-size: 1.2rem;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 
   .turn-display {
@@ -48,6 +108,7 @@
     color: white;
     text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
     animation: glowText 2s infinite alternate;
+    display: none;
   }
 
   @keyframes glowText {
@@ -56,7 +117,7 @@
   }
 
   .board {
-    display: grid;
+    display: none;
     gap: 10px;
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px);
@@ -92,26 +153,31 @@
     background: rgba(255, 255, 255, 0.3);
   }
 
+  .cell.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
   .x { color: red; text-shadow: 0 0 10px red, 0 0 20px red; }
   .o { color: cyan; text-shadow: 0 0 10px cyan, 0 0 20px cyan; }
 
-  .play-again {
+  .exit-btn {
     margin-top: 20px;
-    padding: 12px 25px;
-    font-size: 18px;
-    background: rgba(0,0,0,0.8);
-    color: #00f5c9;
+    padding: 10px 20px;
+    font-size: 16px;
+    background: rgba(255,0,0,0.8);
+    color: white;
     border: none;
     border-radius: 10px;
     cursor: pointer;
-    display: none;
     backdrop-filter: blur(10px);
-    box-shadow: 0 0 20px #00f5c9;
+    box-shadow: 0 0 20px rgba(255,0,0,0.5);
     transition: 0.3s;
+    display: none;
   }
 
-  .play-again:hover {
-    background: rgba(0,0,0,0.9);
+  .exit-btn:hover {
+    background: rgba(255,0,0,1);
   }
 
   .result-dialog {
@@ -130,33 +196,262 @@
     text-align: center;
     z-index: 20;
   }
+
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+  }
+
+  .modal-content {
+    background: rgba(0,0,0,0.9);
+    padding: 30px;
+    border-radius: 20px;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 0 30px #00f5c9;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 400px;
+    width: 90%;
+  }
+
+  .modal-content h2 {
+    color: #0ff;
+    margin: 0;
+    text-shadow: 0 0 10px #0ff;
+  }
+
+  .modal-content label {
+    color: white;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 768px) {
+    .board {
+      grid-template-columns: repeat(3, 90px) !important;
+      grid-template-rows: repeat(3, 90px) !important;
+    }
+    .cell {
+      font-size: 3rem;
+    }
+  }
 </style>
 </head>
 <body>
 
-<div class="mode-select" id="modeSelect">
-  <button onclick="startGame('robot')">Play with Robot</button>
-  <button onclick="startGame('1v1')">Play 1v1</button>
-</div>
+<div class="container">
+  <div class="mode-select" id="modeSelect">
+    <button onclick="showCreateRoomModal()">Create Room</button>
+    <button onclick="showJoinRoomModal()">Join Room</button>
+  </div>
 
-<div class="turn-display" id="turnDisplay" style="display:none;">X's Turn</div>
-<div class="board" id="board" style="display:none;"></div>
-<button class="play-again" id="playAgain">Play Again</button>
+  <div class="room-info" id="roomInfo">
+    <div>Room ID:</div>
+    <div class="room-id" id="roomIdDisplay"></div>
+    <div class="waiting-text" id="waitingText">Waiting for opponent...</div>
+    <div id="playerInfo" style="margin-top: 15px; color: #00f5c9;"></div>
+  </div>
+
+  <div class="turn-display" id="turnDisplay">X's Turn</div>
+  <div class="board" id="board"></div>
+  <button class="exit-btn" id="exitBtn">Exit Room</button>
+</div>
 
 <div class="result-dialog" id="resultDialog"></div>
 
-<script>
+<div class="modal" id="createRoomModal">
+  <div class="modal-content">
+    <h2>Create Room</h2>
+    <label>Set a password (optional):</label>
+    <input type="text" class="input-box" id="createPasswordInput" placeholder="Leave blank for no password" maxlength="20">
+    <button class="btn" onclick="createRoom()">Create</button>
+    <button class="btn" onclick="hideModal('createRoomModal')">Cancel</button>
+  </div>
+</div>
+
+<div class="modal" id="joinRoomModal">
+  <div class="modal-content">
+    <h2>Join Room</h2>
+    <input type="text" class="input-box" id="joinRoomIdInput" placeholder="Enter Room ID" maxlength="5">
+    <input type="text" class="input-box" id="joinPasswordInput" placeholder="Password (if required)">
+    <button class="btn" onclick="joinRoom()">Join</button>
+    <button class="btn" onclick="hideModal('joinRoomModal')">Cancel</button>
+  </div>
+</div>
+
+<script type="module">
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentRoom = null;
+let myRole = null;
+let mySymbol = null;
+let cells = [];
+let subscription = null;
+
 const board = document.getElementById('board');
-const playAgainBtn = document.getElementById('playAgain');
 const turnDisplay = document.getElementById('turnDisplay');
 const resultDialog = document.getElementById('resultDialog');
 const modeSelect = document.getElementById('modeSelect');
+const roomInfo = document.getElementById('roomInfo');
+const roomIdDisplay = document.getElementById('roomIdDisplay');
+const waitingText = document.getElementById('waitingText');
+const playerInfo = document.getElementById('playerInfo');
+const exitBtn = document.getElementById('exitBtn');
 
-let currentPlayer = 'x';
-let cells = [];
-let gameMode = '1v1';
+function generateRoomId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (let i = 0; i < 5; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+}
 
-function detectDevice() {
+function setCookie(name, value, days = 7) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+}
+
+function getCookie(name) {
+  return document.cookie.split('; ').reduce((r, v) => {
+    const parts = v.split('=');
+    return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+  }, '');
+}
+
+function deleteCookie(name) {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+}
+
+window.showCreateRoomModal = function() {
+  document.getElementById('createRoomModal').style.display = 'flex';
+}
+
+window.showJoinRoomModal = function() {
+  document.getElementById('joinRoomModal').style.display = 'flex';
+}
+
+window.hideModal = function(modalId) {
+  document.getElementById(modalId).style.display = 'none';
+}
+
+window.createRoom = async function() {
+  const password = document.getElementById('createPasswordInput').value.trim();
+  const roomId = generateRoomId();
+
+  const creatorSymbol = Math.random() < 0.5 ? 'X' : 'O';
+  const opponentSymbol = creatorSymbol === 'X' ? 'O' : 'X';
+
+  const { data, error } = await supabase
+    .from('rooms')
+    .insert({
+      id: roomId,
+      password: password || null,
+      creator_symbol: creatorSymbol,
+      opponent_symbol: opponentSymbol,
+      current_turn: 'X'
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    alert('Error creating room. Please try again.');
+    return;
+  }
+
+  currentRoom = roomId;
+  myRole = 'creator';
+  mySymbol = creatorSymbol;
+
+  setCookie('roomId', roomId);
+  setCookie('role', 'creator');
+
+  hideModal('createRoomModal');
+  showRoomScreen();
+}
+
+window.joinRoom = async function() {
+  const roomId = document.getElementById('joinRoomIdInput').value.trim().toUpperCase();
+  const password = document.getElementById('joinPasswordInput').value.trim();
+
+  if (!roomId || roomId.length !== 5) {
+    alert('Please enter a valid 5-character Room ID');
+    return;
+  }
+
+  const { data: room, error } = await supabase
+    .from('rooms')
+    .select('*')
+    .eq('id', roomId)
+    .maybeSingle();
+
+  if (error || !room) {
+    alert('Room not found');
+    return;
+  }
+
+  if (room.password && room.password !== password) {
+    alert('Incorrect password');
+    return;
+  }
+
+  if (room.opponent_connected) {
+    alert('Room is full');
+    return;
+  }
+
+  const { error: updateError } = await supabase
+    .from('rooms')
+    .update({
+      opponent_connected: true,
+      last_activity: new Date().toISOString()
+    })
+    .eq('id', roomId);
+
+  if (updateError) {
+    alert('Error joining room');
+    return;
+  }
+
+  currentRoom = roomId;
+  myRole = 'opponent';
+  mySymbol = room.opponent_symbol;
+
+  setCookie('roomId', roomId);
+  setCookie('role', 'opponent');
+
+  hideModal('joinRoomModal');
+  showRoomScreen();
+}
+
+function showRoomScreen() {
+  modeSelect.style.display = 'none';
+  roomInfo.style.display = 'block';
+  exitBtn.style.display = 'block';
+  roomIdDisplay.textContent = currentRoom;
+  playerInfo.textContent = `You are: ${mySymbol}`;
+
+  createBoard();
+  subscribeToRoom();
+  checkRoomStatus();
+}
+
+function createBoard() {
+  board.innerHTML = '';
+  cells = [];
+
   if (window.innerWidth <= 768) {
     board.style.gridTemplateColumns = 'repeat(3, 90px)';
     board.style.gridTemplateRows = 'repeat(3, 90px)';
@@ -164,22 +459,7 @@ function detectDevice() {
     board.style.gridTemplateColumns = 'repeat(3, 120px)';
     board.style.gridTemplateRows = 'repeat(3, 120px)';
   }
-}
 
-function startGame(mode) {
-  gameMode = mode;
-  modeSelect.style.display = 'none';
-  turnDisplay.style.display = 'block';
-  board.style.display = 'grid';
-  createBoard();
-}
-
-function createBoard() {
-  board.innerHTML = '';
-  currentPlayer = 'x';
-  updateTurnDisplay();
-  cells = [];
-  detectDevice();
   for (let i = 0; i < 9; i++) {
     const cell = document.createElement('div');
     cell.classList.add('cell');
@@ -190,140 +470,220 @@ function createBoard() {
   }
 }
 
-function handleMove(e) {
+async function handleMove(e) {
   const cell = e.target;
-  if (cell.textContent !== '' || (gameMode === 'robot' && currentPlayer === 'o')) return;
-  makeMove(cell, currentPlayer);
+  const index = parseInt(cell.dataset.index);
 
-  if (checkWin(currentPlayer)) {
-    endGame(`${currentPlayer.toUpperCase()} Wins!`);
+  if (cell.textContent !== '') return;
+
+  const { data: room } = await supabase
+    .from('rooms')
+    .select('*')
+    .eq('id', currentRoom)
+    .maybeSingle();
+
+  if (!room) return;
+
+  if (room.current_turn !== mySymbol) {
     return;
   }
 
-  if (isDraw()) {
-    endGame('Draw!');
-    return;
-  }
+  if (room.winner) return;
 
-  currentPlayer = currentPlayer === 'x' ? 'o' : 'x';
-  updateTurnDisplay();
+  const boardState = room.board_state;
+  boardState[index] = { index, value: mySymbol, player: myRole };
 
-  if (gameMode === 'robot' && currentPlayer === 'o') {
-    setTimeout(botMove, 300);
-  }
+  const nextTurn = mySymbol === 'X' ? 'O' : 'X';
+  const winner = checkWinFromState(boardState, mySymbol);
+  const draw = !winner && boardState.every(cell => cell.value !== '');
+
+  await supabase
+    .from('rooms')
+    .update({
+      board_state: boardState,
+      current_turn: nextTurn,
+      winner: winner ? mySymbol : (draw ? 'draw' : null),
+      last_activity: new Date().toISOString()
+    })
+    .eq('id', currentRoom);
 }
 
-function makeMove(cell, player) {
-  cell.textContent = player.toUpperCase();
-  cell.classList.add(player);
-}
-
-function updateTurnDisplay() {
-  turnDisplay.textContent = `${currentPlayer.toUpperCase()}'s Turn`;
-}
-
-function checkWin(player) {
+function checkWinFromState(boardState, player) {
   const winCombos = [
     [0,1,2],[3,4,5],[6,7,8],
     [0,3,6],[1,4,7],[2,5,8],
     [0,4,8],[2,4,6]
   ];
   return winCombos.some(combo =>
-    combo.every(index => cells[index].textContent.toLowerCase() === player)
+    combo.every(index => boardState[index].value === player)
   );
 }
 
-function isDraw() {
-  return cells.every(cell => cell.textContent !== '');
+function subscribeToRoom() {
+  subscription = supabase
+    .channel(`room:${currentRoom}`)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${currentRoom}` },
+      (payload) => {
+        updateGameState(payload.new);
+      }
+    )
+    .subscribe();
 }
 
-function endGame(message) {
-  playAgainBtn.style.display = 'block';
+async function checkRoomStatus() {
+  const { data: room } = await supabase
+    .from('rooms')
+    .select('*')
+    .eq('id', currentRoom)
+    .maybeSingle();
+
+  if (room) {
+    updateGameState(room);
+  }
+}
+
+function updateGameState(room) {
+  if (!room) return;
+
+  if (room.creator_connected && room.opponent_connected) {
+    waitingText.style.display = 'none';
+    board.style.display = 'grid';
+    turnDisplay.style.display = 'block';
+
+    updateBoard(room.board_state);
+
+    if (room.current_turn === mySymbol) {
+      turnDisplay.textContent = `Your Turn (${mySymbol})`;
+      turnDisplay.style.color = '#00ff00';
+    } else {
+      turnDisplay.textContent = `Opponent's Turn`;
+      turnDisplay.style.color = '#ff9900';
+    }
+
+    if (room.winner) {
+      if (room.winner === 'draw') {
+        showResult('Draw!');
+      } else if (room.winner === mySymbol) {
+        showResult('You Win!');
+      } else {
+        showResult('You Lose!');
+      }
+    }
+  } else {
+    waitingText.style.display = 'block';
+    board.style.display = 'none';
+    turnDisplay.style.display = 'none';
+  }
+}
+
+function updateBoard(boardState) {
+  boardState.forEach((cellData, index) => {
+    const cell = cells[index];
+    if (cellData.value) {
+      cell.textContent = cellData.value;
+      cell.classList.add(cellData.value.toLowerCase());
+    } else {
+      cell.textContent = '';
+      cell.className = 'cell';
+    }
+  });
+}
+
+function showResult(message) {
   resultDialog.textContent = message;
   resultDialog.style.display = 'block';
-  cells.forEach(cell => cell.removeEventListener('click', handleMove));
+  cells.forEach(cell => cell.classList.add('disabled'));
 }
 
-function botMove() {
-  let bestScore = -Infinity;
-  let move;
-  for (let i = 0; i < 9; i++) {
-    if (cells[i].textContent === '') {
-      cells[i].textContent = 'O';
-      let score = minimax(cells, 0, false);
-      cells[i].textContent = '';
-      if (score > bestScore) {
-        bestScore = score;
-        move = i;
-      }
-    }
-  }
-  makeMove(cells[move], 'o');
-
-  if (checkWin('o')) {
-    endGame('O Wins!');
-    return;
+window.exitRoom = async function() {
+  if (subscription) {
+    subscription.unsubscribe();
   }
 
-  if (isDraw()) {
-    endGame('Draw!');
-    return;
+  if (currentRoom && myRole === 'creator') {
+    await supabase
+      .from('rooms')
+      .delete()
+      .eq('id', currentRoom);
+  } else if (currentRoom) {
+    await supabase
+      .from('rooms')
+      .update({ opponent_connected: false })
+      .eq('id', currentRoom);
   }
 
-  currentPlayer = 'x';
-  updateTurnDisplay();
-}
+  deleteCookie('roomId');
+  deleteCookie('role');
 
-function minimax(boardCells, depth, isMaximizing) {
-  if (checkStaticWin('o')) return 10 - depth;
-  if (checkStaticWin('x')) return depth - 10;
-  if (boardCells.every(cell => cell.textContent !== '')) return 0;
+  currentRoom = null;
+  myRole = null;
+  mySymbol = null;
 
-  if (isMaximizing) {
-    let bestScore = -Infinity;
-    for (let i = 0; i < 9; i++) {
-      if (boardCells[i].textContent === '') {
-        boardCells[i].textContent = 'O';
-        let score = minimax(boardCells, depth + 1, false);
-        boardCells[i].textContent = '';
-        bestScore = Math.max(score, bestScore);
-      }
-    }
-    return bestScore;
-  } else {
-    let bestScore = Infinity;
-    for (let i = 0; i < 9; i++) {
-      if (boardCells[i].textContent === '') {
-        boardCells[i].textContent = 'X';
-        let score = minimax(boardCells, depth + 1, true);
-        boardCells[i].textContent = '';
-        bestScore = Math.min(score, bestScore);
-      }
-    }
-    return bestScore;
-  }
-}
-
-function checkStaticWin(player) {
-  const winCombos = [
-    [0,1,2],[3,4,5],[6,7,8],
-    [0,3,6],[1,4,7],[2,5,8],
-    [0,4,8],[2,4,6]
-  ];
-  return winCombos.some(combo =>
-    combo.every(index => cells[index].textContent.toLowerCase() === player)
-  );
-}
-
-playAgainBtn.addEventListener('click', () => {
-  playAgainBtn.style.display = 'none';
+  roomInfo.style.display = 'none';
+  board.style.display = 'none';
+  turnDisplay.style.display = 'none';
+  exitBtn.style.display = 'none';
   resultDialog.style.display = 'none';
-  createBoard();
+  modeSelect.style.display = 'flex';
+}
+
+exitBtn.addEventListener('click', exitRoom);
+
+window.addEventListener('load', async () => {
+  const savedRoomId = getCookie('roomId');
+  const savedRole = getCookie('role');
+
+  if (savedRoomId && savedRole) {
+    const { data: room } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('id', savedRoomId)
+      .maybeSingle();
+
+    if (room) {
+      currentRoom = savedRoomId;
+      myRole = savedRole;
+      mySymbol = savedRole === 'creator' ? room.creator_symbol : room.opponent_symbol;
+
+      if (savedRole === 'creator') {
+        await supabase
+          .from('rooms')
+          .update({
+            creator_connected: true,
+            last_activity: new Date().toISOString()
+          })
+          .eq('id', savedRoomId);
+      } else {
+        await supabase
+          .from('rooms')
+          .update({
+            opponent_connected: true,
+            last_activity: new Date().toISOString()
+          })
+          .eq('id', savedRoomId);
+      }
+
+      showRoomScreen();
+    } else {
+      deleteCookie('roomId');
+      deleteCookie('role');
+    }
+  }
 });
 
-window.addEventListener('resize', detectDevice);
+window.addEventListener('resize', () => {
+  if (board.style.display === 'grid') {
+    if (window.innerWidth <= 768) {
+      board.style.gridTemplateColumns = 'repeat(3, 90px)';
+      board.style.gridTemplateRows = 'repeat(3, 90px)';
+    } else {
+      board.style.gridTemplateColumns = 'repeat(3, 120px)';
+      board.style.gridTemplateRows = 'repeat(3, 120px)';
+    }
+  }
+});
 </script>
 
 </body>
 </html>
-

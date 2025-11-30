@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NEON XOX Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      height: 100vh;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .mode-select {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    button, .btn {
+      padding: 12px 25px;
+      font-size: 18px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #00f5c9;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 20px #00f5c9;
+      transition: 0.3s;
+      font-weight: 600;
+    }
+
+    button:hover, .btn:hover {
+      background: rgba(0, 0, 0, 0.95);
+      box-shadow: 0 0 30px #00f5c9;
+    }
+
+    button:active, .btn:active {
+      transform: scale(0.95);
+    }
+
+    input {
+      padding: 10px 15px;
+      font-size: 16px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: 2px solid #00f5c9;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 15px rgba(0, 245, 201, 0.3);
+      transition: 0.3s;
+      text-align: center;
+    }
+
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    input:focus {
+      outline: none;
+      box-shadow: 0 0 25px #00f5c9;
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    .room-info {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px 30px;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 20px #00f5c9;
+      color: white;
+      text-align: center;
+      display: none;
+    }
+
+    .room-id {
+      font-size: 2.5rem;
+      color: #0ff;
+      text-shadow: 0 0 10px #0ff;
+      margin: 15px 0;
+      letter-spacing: 8px;
+      font-weight: bold;
+    }
+
+    .waiting-text {
+      color: #00f5c9;
+      font-size: 1.2rem;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .turn-display {
+      font-size: 1.5rem;
+      color: white;
+      text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+      animation: glowText 2s infinite alternate;
+      display: none;
+    }
+
+    @keyframes glowText {
+      from { text-shadow: 0 0 10px #0ff; }
+      to { text-shadow: 0 0 20px #0ff, 0 0 40px #0ff; }
+    }
+
+    .board {
+      display: none;
+      grid-template-columns: repeat(3, 120px);
+      grid-template-rows: repeat(3, 120px);
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 0 30px #0ff, 0 0 60px #0ff;
+      animation: neonPulse 5s infinite alternate;
+    }
+
+    @keyframes neonPulse {
+      0% { box-shadow: 0 0 20px #0ff, 0 0 40px #0ff; }
+      100% { box-shadow: 0 0 40px #0ff, 0 0 80px #0ff; }
+    }
+
+    .cell {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+      color: white;
+      user-select: none;
+      box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    }
+
+    .cell:hover:not(.disabled) {
+      background: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 0 15px rgba(0, 245, 201, 0.6);
+    }
+
+    .cell.disabled {
+      cursor: not-allowed;
+    }
+
+    .x {
+      color: #ff3333;
+      text-shadow: 0 0 10px #ff3333, 0 0 20px #ff3333;
+    }
+
+    .o {
+      color: #00d4ff;
+      text-shadow: 0 0 10px #00d4ff, 0 0 20px #00d4ff;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .exit-btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: rgba(255, 50, 50, 0.8);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 20px rgba(255, 50, 50, 0.5);
+      transition: 0.3s;
+      display: none;
+      font-weight: 600;
+    }
+
+    .exit-btn:hover {
+      background: rgba(255, 50, 50, 1);
+      box-shadow: 0 0 30px rgba(255, 50, 50, 0.8);
+    }
+
+    .result-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      padding: 40px 60px;
+      color: #0ff;
+      font-size: 2.5rem;
+      box-shadow: 0 0 30px #0ff, 0 0 60px #0ff;
+      display: none;
+      text-align: center;
+      z-index: 20;
+      font-weight: bold;
+      animation: slideIn 0.5s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translate(-50%, -60%);
+        opacity: 0;
+      }
+      to {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+      }
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: rgba(0, 0, 0, 0.95);
+      padding: 40px;
+      border-radius: 20px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 0 30px #00f5c9;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      max-width: 400px;
+      width: 90%;
+      border: 2px solid #00f5c9;
+    }
+
+    .modal-content h2 {
+      color: #0ff;
+      margin: 0;
+      text-shadow: 0 0 10px #0ff;
+      font-size: 2rem;
+    }
+
+    .modal-content label {
+      color: #00f5c9;
+      font-size: 1rem;
+      text-align: left;
+    }
+
+    .loader {
+      border: 3px solid rgba(0, 245, 201, 0.3);
+      border-top: 3px solid #00f5c9;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 10px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .status {
+      font-size: 0.9rem;
+      color: #00f5c9;
+      min-height: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .board {
+        grid-template-columns: repeat(3, 90px) !important;
+        grid-template-rows: repeat(3, 90px) !important;
+      }
+
+      .cell {
+        font-size: 3rem;
+      }
+
+      .room-id {
+        font-size: 1.8rem;
+        letter-spacing: 4px;
+      }
+
+      .result-dialog {
+        font-size: 1.8rem;
+        padding: 30px 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="mode-select" id="modeSelect">
+    <button onclick="showCreateRoomModal()">Create Room</button>
+    <button onclick="showJoinRoomModal()">Join Room</button>
+  </div>
+
+  <div class="room-info" id="roomInfo">
+    <div>Room ID:</div>
+    <div class="room-id" id="roomIdDisplay"></div>
+    <div class="waiting-text" id="waitingText">Waiting for opponent...</div>
+    <div id="playerInfo" style="margin-top: 15px; color: #00f5c9; font-size: 1.1rem;"></div>
+  </div>
+
+  <div class="turn-display" id="turnDisplay"></div>
+  <div class="board" id="board"></div>
+  <div class="controls">
+    <button class="exit-btn" id="exitBtn" onclick="exitRoom()">Exit Room</button>
+  </div>
+</div>
+
+<div class="result-dialog" id="resultDialog"></div>
+
+<div class="modal" id="createRoomModal">
+  <div class="modal-content">
+    <h2>Create Room</h2>
+    <label>Set a password (optional):</label>
+    <input type="text" id="createPasswordInput" placeholder="Leave blank for no password" maxlength="20">
+    <div class="status" id="createStatus"></div>
+    <button class="btn" onclick="createRoom()">Create</button>
+    <button class="btn" onclick="hideModal('createRoomModal')" style="background: rgba(100,100,100,0.8);">Cancel</button>
+  </div>
+</div>
+
+<div class="modal" id="joinRoomModal">
+  <div class="modal-content">
+    <h2>Join Room</h2>
+    <input type="text" id="joinRoomIdInput" placeholder="Enter Room ID" maxlength="5">
+    <input type="text" id="joinPasswordInput" placeholder="Password (if required)">
+    <div class="status" id="joinStatus"></div>
+    <button class="btn" onclick="joinRoom()">Join</button>
+    <button class="btn" onclick="hideModal('joinRoomModal')" style="background: rgba(100,100,100,0.8);">Cancel</button>
+  </div>
+</div>
+
+<script>
+  const API_URL = 'https://luffyxdstore.rf.gd/game.php';
+  const POLL_INTERVAL = 1000;
+
+  let currentRoom = null;
+  let myRole = null;
+  let mySymbol = null;
+  let cells = [];
+  let pollInterval = null;
+  let lastBoardState = null;
+
+  const board = document.getElementById('board');
+  const turnDisplay = document.getElementById('turnDisplay');
+  const resultDialog = document.getElementById('resultDialog');
+  const modeSelect = document.getElementById('modeSelect');
+  const roomInfo = document.getElementById('roomInfo');
+  const roomIdDisplay = document.getElementById('roomIdDisplay');
+  const waitingText = document.getElementById('waitingText');
+  const playerInfo = document.getElementById('playerInfo');
+  const exitBtn = document.getElementById('exitBtn');
+
+  function setCookie(name, value, days = 7) {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+  }
+
+  function getCookie(name) {
+    return document.cookie.split('; ').reduce((r, v) => {
+      const parts = v.split('=');
+      return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+    }, '');
+  }
+
+  function deleteCookie(name) {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+  }
+
+  window.showCreateRoomModal = function() {
+    document.getElementById('createRoomModal').classList.add('active');
+  }
+
+  window.showJoinRoomModal = function() {
+    document.getElementById('joinRoomModal').classList.add('active');
+  }
+
+  window.hideModal = function(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+  }
+
+  window.createRoom = async function() {
+    const password = document.getElementById('createPasswordInput').value.trim();
+    const statusEl = document.getElementById('createStatus');
+    statusEl.innerHTML = '<div class="loader"></div>';
+
+    try {
+      const formData = new FormData();
+      formData.append('action', 'create');
+      formData.append('password', password);
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        currentRoom = data.room_id;
+        myRole = 'creator';
+        mySymbol = data.creator_symbol;
+
+        setCookie('roomId', currentRoom);
+        setCookie('role', 'creator');
+
+        hideModal('createRoomModal');
+        showRoomScreen();
+      } else {
+        statusEl.textContent = 'Error creating room';
+      }
+    } catch (error) {
+      statusEl.textContent = 'Connection error';
+      console.error(error);
+    }
+  }
+
+  window.joinRoom = async function() {
+    const roomId = document.getElementById('joinRoomIdInput').value.trim().toUpperCase();
+    const password = document.getElementById('joinPasswordInput').value.trim();
+    const statusEl = document.getElementById('joinStatus');
+    statusEl.innerHTML = '<div class="loader"></div>';
+
+    if (!roomId || roomId.length !== 5) {
+      statusEl.textContent = 'Invalid Room ID (must be 5 characters)';
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('action', 'join');
+      formData.append('room', roomId);
+      formData.append('password', password);
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        currentRoom = roomId;
+        myRole = 'opponent';
+        mySymbol = data.opponent_symbol;
+
+        setCookie('roomId', currentRoom);
+        setCookie('role', 'opponent');
+
+        hideModal('joinRoomModal');
+        showRoomScreen();
+      } else {
+        statusEl.textContent = data.error || 'Failed to join room';
+      }
+    } catch (error) {
+      statusEl.textContent = 'Connection error';
+      console.error(error);
+    }
+  }
+
+  function showRoomScreen() {
+    modeSelect.style.display = 'none';
+    roomInfo.style.display = 'block';
+    exitBtn.style.display = 'block';
+    roomIdDisplay.textContent = currentRoom;
+    playerInfo.textContent = `You are: ${mySymbol}`;
+
+    createBoard();
+    startPolling();
+  }
+
+  function createBoard() {
+    board.innerHTML = '';
+    cells = [];
+
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.dataset.index = i;
+      cell.addEventListener('click', handleMove);
+      board.appendChild(cell);
+      cells.push(cell);
+    }
+  }
+
+  async function handleMove(e) {
+    const cell = e.target;
+    const index = parseInt(cell.dataset.index);
+
+    if (cell.textContent !== '') return;
+
+    try {
+      const formData = new FormData();
+      formData.append('action', 'move');
+      formData.append('room', currentRoom);
+      formData.append('index', index);
+      formData.append('player', myRole);
+      formData.append('symbol', mySymbol);
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        updateBoard(data.room_data.board_state);
+        updateGameState(data.room_data);
+      }
+    } catch (error) {
+      console.error('Move error:', error);
+    }
+  }
+
+  function startPolling() {
+    pollInterval = setInterval(pollRoomStatus, POLL_INTERVAL);
+    pollRoomStatus();
+  }
+
+  async function pollRoomStatus() {
+    try {
+      const response = await fetch(`${API_URL}?action=get&room=${currentRoom}`);
+      const roomData = await response.json();
+
+      if (roomData.error) {
+        if (pollInterval) clearInterval(pollInterval);
+        return;
+      }
+
+      updateGameState(roomData);
+    } catch (error) {
+      console.error('Poll error:', error);
+    }
+  }
+
+  function updateGameState(roomData) {
+    if (!roomData) return;
+
+    if (roomData.creator_connected && roomData.opponent_connected) {
+      waitingText.style.display = 'none';
+      board.style.display = 'grid';
+      turnDisplay.style.display = 'block';
+
+      updateBoard(roomData.board_state);
+
+      if (roomData.current_turn === mySymbol) {
+        turnDisplay.textContent = `Your Turn (${mySymbol})`;
+        turnDisplay.style.color = '#00ff00';
+      } else {
+        turnDisplay.textContent = `Opponent's Turn`;
+        turnDisplay.style.color = '#ff9900';
+      }
+
+      if (roomData.winner) {
+        if (pollInterval) clearInterval(pollInterval);
+
+        if (roomData.winner === 'draw') {
+          showResult('Draw!');
+        } else if (roomData.winner === mySymbol) {
+          showResult('You Win!');
+        } else {
+          showResult('You Lose!');
+        }
+      }
+    } else {
+      waitingText.style.display = 'block';
+      board.style.display = 'none';
+      turnDisplay.style.display = 'none';
+    }
+  }
+
+  function updateBoard(boardState) {
+    boardState.forEach((cellData, index) => {
+      const cell = cells[index];
+      if (cellData.value) {
+        cell.textContent = cellData.value;
+        cell.classList.remove('disabled');
+        cell.classList.add(cellData.value.toLowerCase());
+      } else {
+        cell.textContent = '';
+        cell.className = 'cell';
+      }
+    });
+  }
+
+  function showResult(message) {
+    resultDialog.textContent = message;
+    resultDialog.style.display = 'block';
+    cells.forEach(cell => cell.classList.add('disabled'));
+  }
+
+  window.exitRoom = async function() {
+    if (pollInterval) clearInterval(pollInterval);
+
+    try {
+      const formData = new FormData();
+      formData.append('action', 'exit');
+      formData.append('room', currentRoom);
+      formData.append('role', myRole);
+
+      await fetch(API_URL, {
+        method: 'POST',
+        body: formData
+      });
+    } catch (error) {
+      console.error('Exit error:', error);
+    }
+
+    deleteCookie('roomId');
+    deleteCookie('role');
+
+    currentRoom = null;
+    myRole = null;
+    mySymbol = null;
+
+    roomInfo.style.display = 'none';
+    board.style.display = 'none';
+    turnDisplay.style.display = 'none';
+    exitBtn.style.display = 'none';
+    resultDialog.style.display = 'none';
+    modeSelect.style.display = 'flex';
+  }
+
+  window.addEventListener('load', async () => {
+    const savedRoomId = getCookie('roomId');
+    const savedRole = getCookie('role');
+
+    if (savedRoomId && savedRole) {
+      try {
+        const response = await fetch(`${API_URL}?action=get&room=${savedRoomId}`);
+        const roomData = await response.json();
+
+        if (!roomData.error) {
+          currentRoom = savedRoomId;
+          myRole = savedRole;
+          mySymbol = savedRole === 'creator' ? roomData.creator_symbol : roomData.opponent_symbol;
+
+          const formData = new FormData();
+          formData.append('action', 'reconnect');
+          formData.append('room', savedRoomId);
+          formData.append('role', savedRole);
+
+          await fetch(API_URL, {
+            method: 'POST',
+            body: formData
+          });
+
+          showRoomScreen();
+        } else {
+          deleteCookie('roomId');
+          deleteCookie('role');
+        }
+      } catch (error) {
+        console.error('Reconnect error:', error);
+        deleteCookie('roomId');
+        deleteCookie('role');
+      }
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (board.style.display === 'grid') {
+      if (window.innerWidth <= 768) {
+        board.style.gridTemplateColumns = 'repeat(3, 90px)';
+        board.style.gridTemplateRows = 'repeat(3, 90px)';
+      } else {
+        board.style.gridTemplateColumns = 'repeat(3, 120px)';
+        board.style.gridTemplateRows = 'repeat(3, 120px)';
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
